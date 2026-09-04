@@ -25,6 +25,9 @@ export function NavBar() {
             <Link href="/search" className="text-sm text-black/60 hover:opacity-70 dark:text-white/60">
               Search
             </Link>
+            <Link href="/chat" className="text-sm text-black/60 hover:opacity-70 dark:text-white/60">
+              Ask
+            </Link>
           </>
         )}
       </div>

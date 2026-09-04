@@ -11,7 +11,11 @@ class Settings(BaseSettings):
     ollama_model: str = "llama3.2"
     ollama_embedding_model: str = "nomic-embed-text"
 
-    clerk_jwks_url: str | None = None
+    # dev-only default - every real deployment must override this
+    jwt_secret_key: str = "dev-secret-do-not-use-in-production"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 30
 
 
 settings = Settings()

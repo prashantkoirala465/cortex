@@ -6,17 +6,13 @@ from app.db import get_db
 from app.deps import get_current_user
 from app.llm import get_llm_provider
 from app.models import Note, NoteChunk, User
+from app.relevance import MAX_RELEVANT_DISTANCE
 from app.schemas import ChatRequest, ChatResponse, NoteRef
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 CONTEXT_CHUNK_LIMIT = 8
 HISTORY_TURN_LIMIT = 6
-# cosine distance cutoff for "actually relevant" - measured empirically
-# against nomic-embed-text: on-topic pairs land ~0.3-0.4, off-topic pairs
-# ~0.6+. Without this, a top-K query with few notes in the account pulls
-# in unrelated notes as "sources" just because nothing better exists.
-MAX_RELEVANT_DISTANCE = 0.5
 
 SYSTEM_PROMPT = """You are a helpful assistant answering questions using ONLY the user's own \
 notes provided below as context. If the notes don't contain the answer, say so honestly instead \

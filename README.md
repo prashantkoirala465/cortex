@@ -12,7 +12,7 @@ Most note apps only find what you explicitly link. Cortex tries to surface conne
 - **Backend** (`api/`): FastAPI, SQLAlchemy, Alembic, Postgres + pgvector
 - **Jobs**: Redis + RQ for async note processing (extraction, embeddings)
 - **AI**: local inference via [Ollama](https://ollama.com) — no external API keys required to run this
-- **Auth**: Clerk
+- **Auth**: self-hosted email/password (bcrypt + JWT access/refresh tokens)
 
 ## Status
 
@@ -34,13 +34,20 @@ docker compose up -d
 cd api
 cp ../.env.example .env
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/alembic upgrade head
 .venv/bin/uvicorn app.main:app --reload
 
-# 4. frontend (new terminal)
+# 4. background worker (new terminal) - processes notes: extraction + embeddings
+cd api
+.venv/bin/rq worker extraction --url redis://localhost:6379/0
+
+# 5. frontend (new terminal)
 cd web
 cp ../.env.example .env.local
 npm install
 npm run dev
 ```
+
+Notes get queued for processing on every save; without the worker running, new notes just sit in the queue until one is started.
 
 See `api/README.md` and `web/README.md` for details on each app.

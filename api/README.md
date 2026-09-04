@@ -8,7 +8,20 @@ FastAPI backend for Cortex: notes CRUD, background extraction pipeline, knowledg
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 cp ../.env.example .env  # then fill in as needed
+.venv/bin/alembic upgrade head
 .venv/bin/uvicorn app.main:app --reload
 ```
 
-Requires Postgres (with `pgvector`) and Redis running — see the root `docker-compose.yml`.
+Requires Postgres (with `pgvector`) and Redis running — see the root `docker-compose.yml` — and [Ollama](https://ollama.com) serving locally with `llama3.2` and `nomic-embed-text` pulled.
+
+Notes get processed (entity/relationship extraction + embeddings) by a background worker, not inline in the request:
+
+```bash
+.venv/bin/rq worker extraction --url redis://localhost:6379/0
+```
+
+## Tests
+
+```bash
+.venv/bin/pytest -v
+```

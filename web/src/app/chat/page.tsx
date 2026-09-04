@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
+import { friendlyErrorMessage } from "@/components/error-banner";
 import { NavBar } from "@/components/nav-bar";
 import { useAuth } from "@/context/auth-context";
 import { useRequireAuth } from "@/hooks/use-require-auth";
 import { sendChatMessage, type ChatTurn } from "@/lib/chat";
 import type { NoteRef } from "@/lib/graph";
 
-type DisplayMessage = ChatTurn & { sources?: NoteRef[] };
+type DisplayMessage = ChatTurn & { sources?: NoteRef[]; isError?: boolean };
 
 export default function ChatPage() {
   const { user, isLoading } = useRequireAuth();
@@ -32,6 +33,11 @@ export default function ChatPage() {
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: response.answer, sources: response.sources },
+      ]);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: friendlyErrorMessage(err), isError: true },
       ]);
     } finally {
       setIsSending(false);
@@ -61,9 +67,11 @@ export default function ChatPage() {
             >
               <div
                 className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-                  message.role === "user"
-                    ? "bg-foreground text-background"
-                    : "bg-black/5 dark:bg-white/10"
+                  message.isError
+                    ? "bg-red-600/10 text-red-600 dark:text-red-400"
+                    : message.role === "user"
+                      ? "bg-foreground text-background"
+                      : "bg-black/5 dark:bg-white/10"
                 }`}
               >
                 {message.content}

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import auth, notes
+from app.routers import auth, graph, notes
 
 app = FastAPI(title="Cortex API")
 
@@ -15,6 +15,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(notes.router)
+app.include_router(graph.router)
 
 
 @app.get("/health")

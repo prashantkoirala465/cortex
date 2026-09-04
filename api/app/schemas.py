@@ -56,3 +56,23 @@ class ExtractionJobRead(BaseModel):
     created_at: datetime
     started_at: datetime | None
     finished_at: datetime | None
+
+
+class GraphNode(BaseModel):
+    id: uuid.UUID
+    name: str
+    type: str | None
+    note_ids: list[uuid.UUID]
+
+
+class GraphEdge(BaseModel):
+    id: uuid.UUID
+    source: uuid.UUID
+    target: uuid.UUID
+    label: str
+    note_id: uuid.UUID
+
+
+class GraphResponse(BaseModel):
+    nodes: list[GraphNode]
+    edges: list[GraphEdge]

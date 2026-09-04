@@ -9,8 +9,8 @@ export function NavBar() {
   const router = useRouter();
 
   return (
-    <header className="flex items-center justify-between border-b border-black/10 px-6 py-3 dark:border-white/10">
-      <div className="flex items-center gap-4">
+    <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-black/10 px-4 py-3 sm:px-6 dark:border-white/10">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <Link href="/" className="text-sm font-semibold">
           Cortex
         </Link>
@@ -33,7 +33,7 @@ export function NavBar() {
       </div>
       {user && (
         <div className="flex items-center gap-3 text-sm text-black/60 dark:text-white/60">
-          <span>{user.email}</span>
+          <span className="hidden sm:inline">{user.email}</span>
           <button
             onClick={async () => {
               await logout();

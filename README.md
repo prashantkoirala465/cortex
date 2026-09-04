@@ -39,7 +39,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
 # 4. background worker (new terminal) - processes notes: extraction + embeddings
 cd api
-.venv/bin/rq worker extraction --url redis://localhost:6379/0
+OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES .venv/bin/rq worker extraction --url redis://localhost:6379/0
 
 # 5. frontend (new terminal)
 cd web
@@ -49,5 +49,7 @@ npm run dev
 ```
 
 Notes get queued for processing on every save; without the worker running, new notes just sit in the queue until one is started.
+
+`OBJC_DISABLE_INITIALIZE_FORK_SAFETY` is only needed on macOS - RQ's default worker forks a subprocess per job, and macOS's Objective-C runtime crashes on fork() unless that guard is disabled. Not needed on Linux (including wherever this ends up deployed).
 
 See `api/README.md` and `web/README.md` for details on each app.

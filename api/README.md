@@ -17,8 +17,10 @@ Requires Postgres (with `pgvector`) and Redis running — see the root `docker-c
 Notes get processed (entity/relationship extraction + embeddings) by a background worker, not inline in the request:
 
 ```bash
-.venv/bin/rq worker extraction --url redis://localhost:6379/0
+OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES .venv/bin/rq worker extraction --url redis://localhost:6379/0
 ```
+
+(the `OBJC_DISABLE_INITIALIZE_FORK_SAFETY` flag is a macOS-only workaround for a crash in RQ's forking worker; not needed on Linux)
 
 ## Tests
 

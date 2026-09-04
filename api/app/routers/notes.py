@@ -6,8 +6,9 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.deps import get_current_user
-from app.models import Note, User
-from app.schemas import NoteCreate, NoteRead, NoteUpdate
+from app.extraction import enqueue_extraction
+from app.models import ExtractionJob, Note, User
+from app.schemas import ExtractionJobRead, NoteCreate, NoteRead, NoteUpdate
 
 router = APIRouter(prefix="/notes", tags=["notes"])
 
@@ -39,6 +40,7 @@ def create_note(
     db.add(note)
     db.commit()
     db.refresh(note)
+    enqueue_extraction(db, note)
     return note
 
 
@@ -67,12 +69,15 @@ def update_note(
     current_user: User = Depends(get_current_user),
 ) -> Note:
     note = _get_owned_note_or_404(note_id, current_user, db)
+    changed = body.title is not None or body.content is not None
     if body.title is not None:
         note.title = body.title
     if body.content is not None:
         note.content = body.content
     db.commit()
     db.refresh(note)
+    if changed:
+        enqueue_extraction(db, note)
     return note
 
 
@@ -85,3 +90,27 @@ def delete_note(
     note = _get_owned_note_or_404(note_id, current_user, db)
     db.delete(note)
     db.commit()
+
+
+@router.post("/{note_id}/process", response_model=ExtractionJobRead, status_code=202)
+def trigger_processing(
+    note_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ExtractionJob:
+    note = _get_owned_note_or_404(note_id, current_user, db)
+    return enqueue_extraction(db, note)
+
+
+@router.get("/{note_id}/job", response_model=ExtractionJobRead | None)
+def get_latest_job(
+    note_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ExtractionJob | None:
+    note = _get_owned_note_or_404(note_id, current_user, db)
+    return db.scalar(
+        select(ExtractionJob)
+        .where(ExtractionJob.note_id == note.id)
+        .order_by(ExtractionJob.created_at.desc())
+    )

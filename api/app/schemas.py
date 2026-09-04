@@ -45,3 +45,14 @@ class NoteRead(BaseModel):
     content: dict
     created_at: datetime
     updated_at: datetime
+
+
+class ExtractionJobRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    status: str
+    error: str | None
+    created_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None

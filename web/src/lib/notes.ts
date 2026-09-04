@@ -1,5 +1,6 @@
 import type { JSONContent } from "@tiptap/react";
 import type { AuthFetch } from "@/context/auth-context";
+import type { SearchResult } from "@/lib/search";
 
 export type Note = {
   id: string;
@@ -33,4 +34,8 @@ export function updateNote(
 
 export function deleteNote(authFetch: AuthFetch, id: string) {
   return authFetch(`/notes/${id}`, { method: "DELETE" }) as Promise<void>;
+}
+
+export function getRelatedNotes(authFetch: AuthFetch, id: string) {
+  return authFetch(`/notes/${id}/related`) as Promise<SearchResult[]>;
 }

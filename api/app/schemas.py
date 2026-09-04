@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -88,3 +89,18 @@ class SearchResult(BaseModel):
     title: str
     snippet: str
     score: float
+
+
+class ChatTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class ChatRequest(BaseModel):
+    question: str = Field(min_length=1)
+    history: list[ChatTurn] = []
+
+
+class ChatResponse(BaseModel):
+    answer: str
+    sources: list[NoteRef]

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import auth, graph, notes, search
+from app.routers import auth, chat, graph, notes, search
 
 app = FastAPI(title="Cortex API")
 
@@ -17,6 +17,7 @@ app.include_router(auth.router)
 app.include_router(notes.router)
 app.include_router(graph.router)
 app.include_router(search.router)
+app.include_router(chat.router)
 
 
 @app.get("/health")

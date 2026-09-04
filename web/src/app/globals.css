@@ -24,3 +24,52 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.note-prose h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 1.25rem 0 0.5rem;
+}
+.note-prose h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+}
+.note-prose p {
+  margin: 0.5rem 0;
+  line-height: 1.6;
+}
+.note-prose ul,
+.note-prose ol {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+.note-prose ul {
+  list-style: disc;
+}
+.note-prose ol {
+  list-style: decimal;
+}
+.note-prose blockquote {
+  border-left: 3px solid var(--foreground);
+  opacity: 0.8;
+  margin: 0.5rem 0;
+  padding-left: 1rem;
+}
+.note-prose code {
+  background: color-mix(in srgb, var(--foreground) 10%, transparent);
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.3rem;
+  font-family: var(--font-mono);
+}
+.note-prose pre {
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+.note-prose pre code {
+  background: none;
+  padding: 0;
+}

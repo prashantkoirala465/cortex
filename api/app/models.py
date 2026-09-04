@@ -1,6 +1,6 @@
 import enum
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
@@ -144,7 +144,14 @@ class ExtractionJob(Base):
     status: Mapped[str] = mapped_column(String, nullable=False, default=JobStatus.pending.value)
     rq_job_id: Mapped[str | None] = mapped_column(String, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Python-side default (not just server_default=func.now()): Postgres's
+    # now() is fixed for the entire transaction it runs in, so two jobs
+    # created in the same transaction would otherwise get an identical
+    # created_at, breaking "order by created_at desc" for finding the
+    # latest job. datetime.now() doesn't have that problem.
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now()
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

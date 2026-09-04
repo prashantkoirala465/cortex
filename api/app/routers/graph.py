@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.deps import get_current_user
-from app.models import Entity, NoteEntity, Relationship, User
-from app.schemas import GraphEdge, GraphNode, GraphResponse
+from app.models import Entity, Note, NoteEntity, Relationship, User
+from app.schemas import GraphEdge, GraphNode, GraphResponse, NoteRef
 
 router = APIRouter(prefix="/graph", tags=["graph"])
 
@@ -20,15 +20,15 @@ def get_graph(
     entities = list(db.scalars(select(Entity).where(Entity.user_id == current_user.id)))
     entity_ids = [e.id for e in entities]
 
-    notes_by_entity: dict = defaultdict(list)
+    notes_by_entity: dict[object, list[NoteRef]] = defaultdict(list)
     if entity_ids:
         mentions = db.execute(
-            select(NoteEntity.entity_id, NoteEntity.note_id).where(
-                NoteEntity.entity_id.in_(entity_ids)
-            )
+            select(NoteEntity.entity_id, Note.id, Note.title)
+            .join(Note, Note.id == NoteEntity.note_id)
+            .where(NoteEntity.entity_id.in_(entity_ids))
         ).all()
-        for entity_id, note_id in mentions:
-            notes_by_entity[entity_id].append(note_id)
+        for entity_id, note_id, title in mentions:
+            notes_by_entity[entity_id].append(NoteRef(id=note_id, title=title))
 
     relationships = list(
         db.scalars(select(Relationship).where(Relationship.user_id == current_user.id))
@@ -36,7 +36,7 @@ def get_graph(
 
     return GraphResponse(
         nodes=[
-            GraphNode(id=e.id, name=e.name, type=e.type, note_ids=notes_by_entity.get(e.id, []))
+            GraphNode(id=e.id, name=e.name, type=e.type, notes=notes_by_entity.get(e.id, []))
             for e in entities
         ],
         edges=[

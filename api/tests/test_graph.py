@@ -46,7 +46,8 @@ def test_graph_reflects_extracted_entities_and_relationships(monkeypatch, authed
     assert names == {"Cortex", "Postgres"}
 
     cortex_node = next(n for n in body["nodes"] if n["name"] == "Cortex")
-    assert cortex_node["note_ids"] == [note_id]
+    assert [n["id"] for n in cortex_node["notes"]] == [note_id]
+    assert cortex_node["notes"][0]["title"] == "Note"
 
     assert len(body["edges"]) == 1
     assert body["edges"][0]["label"] == "uses"
@@ -59,7 +60,7 @@ def test_entity_mentioned_in_two_notes_lists_both(monkeypatch, authed_client, db
 
     resp = authed_client.get("/graph")
     cortex_node = next(n for n in resp.json()["nodes"] if n["name"] == "Cortex")
-    assert set(cortex_node["note_ids"]) == {note_a, note_b}
+    assert {n["id"] for n in cortex_node["notes"]} == {note_a, note_b}
 
 
 def test_graph_is_scoped_per_user(monkeypatch, client, register, db_session):

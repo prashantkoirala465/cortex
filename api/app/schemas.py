@@ -58,11 +58,16 @@ class ExtractionJobRead(BaseModel):
     finished_at: datetime | None
 
 
+class NoteRef(BaseModel):
+    id: uuid.UUID
+    title: str
+
+
 class GraphNode(BaseModel):
     id: uuid.UUID
     name: str
     type: str | None
-    note_ids: list[uuid.UUID]
+    notes: list[NoteRef]
 
 
 class GraphEdge(BaseModel):

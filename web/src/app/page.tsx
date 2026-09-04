@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { ErrorBanner, friendlyErrorMessage } from "@/components/error-banner";
 import { NavBar } from "@/components/nav-bar";
 import { useAuth } from "@/context/auth-context";
 import { useRequireAuth } from "@/hooks/use-require-auth";
@@ -22,19 +23,38 @@ export default function Home() {
 
   const [notes, setNotes] = useState<Note[] | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
     (async () => {
-      setNotes(await listNotes(authFetch));
+      try {
+        setNotes(await listNotes(authFetch));
+        setLoadError(null);
+      } catch (err) {
+        setLoadError(friendlyErrorMessage(err));
+      }
     })();
   }, [user, authFetch]);
 
+  const retryLoad = useCallback(async () => {
+    try {
+      setNotes(await listNotes(authFetch));
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(friendlyErrorMessage(err));
+    }
+  }, [authFetch]);
+
   async function handleNewNote() {
     setIsCreating(true);
+    setCreateError(null);
     try {
       const note = await createNote(authFetch, { title: "", content: EMPTY_DOC });
       router.push(`/notes/${note.id}`);
+    } catch (err) {
+      setCreateError(friendlyErrorMessage(err));
     } finally {
       setIsCreating(false);
     }
@@ -57,7 +77,12 @@ export default function Home() {
           </button>
         </div>
 
-        {notes === null && <p className="text-sm text-black/50 dark:text-white/50">Loading...</p>}
+        {createError && <ErrorBanner message={createError} />}
+        {loadError && <ErrorBanner message={loadError} onRetry={retryLoad} />}
+
+        {notes === null && !loadError && (
+          <p className="text-sm text-black/50 dark:text-white/50">Loading...</p>
+        )}
 
         {notes?.length === 0 && (
           <p className="text-sm text-black/50 dark:text-white/50">

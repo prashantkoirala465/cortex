@@ -1,3 +1,4 @@
+import hashlib
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -20,6 +21,7 @@ def _create_token(user_id: uuid.UUID, token_type: str, expires_delta: timedelta)
     payload = {
         "sub": str(user_id),
         "type": token_type,
+        "jti": str(uuid.uuid4()),  # guarantees uniqueness even for two tokens issued in the same second
         "iat": now,
         "exp": now + expires_delta,
     }
@@ -36,6 +38,12 @@ def create_refresh_token(user_id: uuid.UUID) -> str:
     return _create_token(
         user_id, "refresh", timedelta(days=settings.refresh_token_expire_days)
     )
+
+
+def hash_token(token: str) -> str:
+    """One-way hash used to store refresh tokens: lets us look up and
+    revoke a presented token without keeping the raw value in the DB."""
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 class InvalidTokenError(Exception):

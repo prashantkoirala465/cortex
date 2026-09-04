@@ -45,3 +45,14 @@ class OllamaProvider(LLMProvider):
     def embed(self, texts: list[str]) -> list[list[float]]:
         response = self._client.embed(model=settings.ollama_embedding_model, input=texts)
         return response["embeddings"]
+
+    def chat(self, messages: list[dict[str, str]]) -> str:
+        response = self._client.chat(
+            model=settings.ollama_model,
+            messages=messages,
+            # Ollama's default context window (2048 tokens) silently
+            # truncates prompts once retrieved note context is added in -
+            # widen it so RAG context actually reaches the model
+            options={"temperature": 0.3, "num_ctx": 4096},
+        )
+        return response["message"]["content"]

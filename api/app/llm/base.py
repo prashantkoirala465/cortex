@@ -30,3 +30,6 @@ class LLMProvider(ABC):
 
     @abstractmethod
     def embed(self, texts: list[str]) -> list[list[float]]: ...
+
+    @abstractmethod
+    def chat(self, messages: list[dict[str, str]]) -> str: ...

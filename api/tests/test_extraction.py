@@ -85,7 +85,10 @@ def test_process_note_writes_chunks_entities_and_relationships(
     assert len(chunks[0].embedding) == 768
 
     entities = {
-        e.name: e for e in db_session.scalars(select(Entity)).all()
+        e.name: e
+        for e in db_session.scalars(
+            select(Entity).join(NoteEntity).where(NoteEntity.note_id == note_id)
+        ).all()
     }
     assert set(entities) == {"Cortex", "Postgres"}
 
@@ -109,7 +112,10 @@ def test_process_note_reuses_existing_entity_across_notes(monkeypatch, authed_cl
     note_b_id, job_b = _create_note_and_job(authed_client, db_session, title="B", body="Also about Cortex.")
     process_note(note_b_id, str(job_b.id), db=db_session)
 
-    entities = list(db_session.scalars(select(Entity).where(Entity.name == "Cortex")))
+    note = db_session.get(Note, note_a_id)
+    entities = list(
+        db_session.scalars(select(Entity).where(Entity.user_id == note.user_id, Entity.name == "Cortex"))
+    )
     assert len(entities) == 1  # same entity reused, not duplicated
 
     mentions = list(db_session.scalars(select(NoteEntity).where(NoteEntity.entity_id == entities[0].id)))

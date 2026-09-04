@@ -10,9 +10,21 @@ export function NavBar() {
 
   return (
     <header className="flex items-center justify-between border-b border-black/10 px-6 py-3 dark:border-white/10">
-      <Link href="/" className="text-sm font-semibold">
-        Cortex
-      </Link>
+      <div className="flex items-center gap-4">
+        <Link href="/" className="text-sm font-semibold">
+          Cortex
+        </Link>
+        {user && (
+          <>
+            <Link href="/" className="text-sm text-black/60 hover:opacity-70 dark:text-white/60">
+              Notes
+            </Link>
+            <Link href="/graph" className="text-sm text-black/60 hover:opacity-70 dark:text-white/60">
+              Graph
+            </Link>
+          </>
+        )}
+      </div>
       {user && (
         <div className="flex items-center gap-3 text-sm text-black/60 dark:text-white/60">
           <span>{user.email}</span>

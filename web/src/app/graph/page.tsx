@@ -5,6 +5,7 @@ import "@xyflow/react/dist/style.css";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ErrorBanner, friendlyErrorMessage } from "@/components/error-banner";
 import { NavBar } from "@/components/nav-bar";
 import { useAuth } from "@/context/auth-context";
 import { useRequireAuth } from "@/hooks/use-require-auth";
@@ -19,11 +20,17 @@ export default function GraphPage() {
   const [graph, setGraph] = useState<Graph | null>(null);
   const [selected, setSelected] = useState<GraphNode | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
     (async () => {
-      setGraph(await getGraph(authFetch));
+      try {
+        setGraph(await getGraph(authFetch));
+        setError(null);
+      } catch (err) {
+        setError(friendlyErrorMessage(err));
+      }
     })();
   }, [user, authFetch]);
 
@@ -32,6 +39,9 @@ export default function GraphPage() {
     try {
       setGraph(await getGraph(authFetch));
       setSelected(null);
+      setError(null);
+    } catch (err) {
+      setError(friendlyErrorMessage(err));
     } finally {
       setIsRefreshing(false);
     }
@@ -98,6 +108,8 @@ export default function GraphPage() {
             {isRefreshing ? "..." : "Refresh"}
           </button>
         </div>
+
+        {error && <ErrorBanner message={error} onRetry={refresh} />}
 
         {graph && graph.nodes.length === 0 && (
           <p className="text-sm text-black/50 dark:text-white/50">

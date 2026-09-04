@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
@@ -42,3 +44,30 @@ def client(db_session):
     app.dependency_overrides[get_db] = override_get_db
     yield TestClient(app)
     app.dependency_overrides.clear()
+
+
+def _register(client: TestClient, password: str = "testpassword123") -> dict:
+    email = f"test-{uuid.uuid4()}@example.com"
+    resp = client.post("/auth/register", json={"email": email, "password": password})
+    assert resp.status_code == 201, resp.text
+    return {"email": email, "password": password, **resp.json()}
+
+
+@pytest.fixture()
+def register(client):
+    """Factory for creating a fresh registered user against the test client."""
+
+    def _make():
+        return _register(client)
+
+    return _make
+
+
+@pytest.fixture()
+def authed_client(client):
+    """A TestClient with a freshly registered user's access token attached
+    to every request, for tests that only care about authenticated notes
+    behavior rather than the auth flow itself."""
+    tokens = _register(client)
+    client.headers["Authorization"] = f"Bearer {tokens['access_token']}"
+    return client

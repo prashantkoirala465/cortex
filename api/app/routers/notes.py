@@ -7,8 +7,9 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.deps import get_current_user
 from app.extraction import enqueue_extraction
-from app.models import ExtractionJob, Note, User
-from app.schemas import ExtractionJobRead, NoteCreate, NoteRead, NoteUpdate
+from app.models import ExtractionJob, Note, NoteChunk, User
+from app.relevance import MAX_RELEVANT_DISTANCE
+from app.schemas import ExtractionJobRead, NoteCreate, NoteRead, NoteUpdate, SearchResult
 
 router = APIRouter(prefix="/notes", tags=["notes"])
 
@@ -114,3 +115,43 @@ def get_latest_job(
         .where(ExtractionJob.note_id == note.id)
         .order_by(ExtractionJob.created_at.desc())
     )
+
+
+@router.get("/{note_id}/related", response_model=list[SearchResult])
+def get_related_notes(
+    note_id: uuid.UUID,
+    limit: int = 5,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[SearchResult]:
+    """Related notes reflect the note's last *processed* content (its
+    stored chunk embeddings), not unsaved edits - computing this live off
+    the editor's current text would mean embedding on every keystroke."""
+    note = _get_owned_note_or_404(note_id, current_user, db)
+
+    my_chunks = list(db.scalars(select(NoteChunk).where(NoteChunk.note_id == note.id)))
+    if not my_chunks:
+        return []
+
+    best_by_note: dict[uuid.UUID, tuple[float, str, str]] = {}
+    for my_chunk in my_chunks:
+        distance = NoteChunk.embedding.cosine_distance(my_chunk.embedding).label("distance")
+        stmt = (
+            select(NoteChunk, Note.title, distance)
+            .join(Note, Note.id == NoteChunk.note_id)
+            .where(Note.user_id == current_user.id, NoteChunk.note_id != note.id)
+            .order_by(distance)
+            .limit(limit)
+        )
+        for other_chunk, title, dist in db.execute(stmt).all():
+            if dist > MAX_RELEVANT_DISTANCE:
+                continue
+            current_best = best_by_note.get(other_chunk.note_id)
+            if current_best is None or dist < current_best[0]:
+                best_by_note[other_chunk.note_id] = (dist, title, other_chunk.content[:280])
+
+    ranked = sorted(best_by_note.items(), key=lambda item: item[1][0])[:limit]
+    return [
+        SearchResult(note_id=other_id, title=title, snippet=snippet, score=round(1 - dist, 4))
+        for other_id, (dist, title, snippet) in ranked
+    ]

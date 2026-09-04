@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
+import { ErrorBanner, friendlyErrorMessage } from "@/components/error-banner";
 import { NavBar } from "@/components/nav-bar";
 import { useAuth } from "@/context/auth-context";
 import { useRequireAuth } from "@/hooks/use-require-auth";
@@ -14,13 +15,17 @@ export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!query.trim()) return;
     setIsSearching(true);
+    setError(null);
     try {
       setResults(await searchNotes(authFetch, query.trim()));
+    } catch (err) {
+      setError(friendlyErrorMessage(err));
     } finally {
       setIsSearching(false);
     }
@@ -54,6 +59,8 @@ export default function SearchPage() {
         <p className="text-xs text-black/40 dark:text-white/40">
           Semantic search — matches by meaning, not just keywords, so it can take a moment.
         </p>
+
+        {error && <ErrorBanner message={error} />}
 
         {results !== null && results.length === 0 && (
           <p className="text-sm text-black/50 dark:text-white/50">No matching notes found.</p>

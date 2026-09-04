@@ -6,10 +6,13 @@ from app.tasks import process_note
 
 
 class FakeLLMProvider(LLMProvider):
-    def __init__(self, entities=None, relationships=None, raise_on_extract=False):
+    def __init__(self, entities=None, relationships=None, raise_on_extract=False, embedding_fn=None):
         self._entities = entities or []
         self._relationships = relationships or []
         self.raise_on_extract = raise_on_extract
+        # lets tests control embedding similarity instead of every text
+        # mapping to the same constant vector, so ranking is actually testable
+        self._embedding_fn = embedding_fn or (lambda _text: [0.1] * 768)
 
     def extract(self, text: str) -> ExtractionResult:
         if self.raise_on_extract:
@@ -17,7 +20,7 @@ class FakeLLMProvider(LLMProvider):
         return ExtractionResult(entities=self._entities, relationships=self._relationships)
 
     def embed(self, texts: list[str]) -> list[list[float]]:
-        return [[0.1] * 768 for _ in texts]
+        return [self._embedding_fn(text) for text in texts]
 
 
 def _create_note_and_job(authed_client, db_session, title="Note", body="Some content"):

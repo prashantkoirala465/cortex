@@ -17,5 +17,9 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 30
 
+    # the refresh-token cookie's Secure flag - only safe to leave False over
+    # plain HTTP for local dev; a real deployment behind HTTPS must set this
+    cookie_secure: bool = False
+
 
 settings = Settings()

@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
 
     ollama_host: str = "http://localhost:11434"
-    ollama_model: str = "llama3.2:3b"
+    ollama_model: str = "llama3.2"
     ollama_embedding_model: str = "nomic-embed-text"
 
     clerk_jwks_url: str | None = None

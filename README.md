@@ -20,4 +20,27 @@ Early scaffolding. Build log lives in commit history.
 
 ## Local setup
 
-Coming together as the project is built out — see individual `web/` and `api/` READMEs once they exist.
+Requires Docker, Python 3.11+, Node 20+, and [Ollama](https://ollama.com).
+
+```bash
+# 1. pull the local models (one-time)
+ollama pull llama3.2
+ollama pull nomic-embed-text
+
+# 2. start postgres + redis
+docker compose up -d
+
+# 3. backend
+cd api
+cp ../.env.example .env
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/uvicorn app.main:app --reload
+
+# 4. frontend (new terminal)
+cd web
+cp ../.env.example .env.local
+npm install
+npm run dev
+```
+
+See `api/README.md` and `web/README.md` for details on each app.

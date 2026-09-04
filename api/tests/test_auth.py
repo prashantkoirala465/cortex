@@ -1,7 +1,7 @@
 import uuid
 
 
-def test_register_returns_tokens(client):
+def test_register_returns_access_token_and_sets_refresh_cookie(client):
     resp = client.post(
         "/auth/register",
         json={"email": f"{uuid.uuid4()}@example.com", "password": "testpassword123"},
@@ -9,8 +9,9 @@ def test_register_returns_tokens(client):
     assert resp.status_code == 201
     body = resp.json()
     assert body["access_token"]
-    assert body["refresh_token"]
     assert body["token_type"] == "bearer"
+    assert "refresh_token" not in body
+    assert client.cookies.get("refresh_token")
 
 
 def test_register_rejects_duplicate_email(client):
@@ -70,36 +71,47 @@ def test_me_returns_current_user(client, register):
     assert resp.json()["email"] == tokens["email"]
 
 
-def test_refresh_issues_new_tokens_and_rotates_old_one(client, register):
-    tokens = register()
-
-    resp = client.post("/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
-    assert resp.status_code == 200
-    new_tokens = resp.json()
-    assert new_tokens["access_token"] != tokens["access_token"]
-    assert new_tokens["refresh_token"] != tokens["refresh_token"]
-
-    # old refresh token was single-use - reusing it must fail
-    resp = client.post("/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
+def test_refresh_without_cookie_fails(client):
+    resp = client.post("/auth/refresh")
     assert resp.status_code == 401
 
 
-def test_refresh_rejects_garbage_token(client):
-    resp = client.post("/auth/refresh", json={"refresh_token": "garbage"})
+def test_refresh_issues_new_access_token_and_rotates_cookie(client, register):
+    tokens = register()
+    old_refresh_cookie = client.cookies.get("refresh_token")
+
+    resp = client.post("/auth/refresh")
+    assert resp.status_code == 200
+    assert resp.json()["access_token"] != tokens["access_token"]
+
+    new_refresh_cookie = client.cookies.get("refresh_token")
+    assert new_refresh_cookie != old_refresh_cookie
+
+    # the old refresh token was single-use - presenting it again must fail
+    client.cookies.set("refresh_token", old_refresh_cookie)
+    resp = client.post("/auth/refresh")
+    assert resp.status_code == 401
+
+
+def test_refresh_rejects_garbage_cookie(client):
+    client.cookies.set("refresh_token", "garbage")
+    resp = client.post("/auth/refresh")
     assert resp.status_code == 401
 
 
 def test_refresh_rejects_access_token_used_as_refresh_token(client, register):
     tokens = register()
-    resp = client.post("/auth/refresh", json={"refresh_token": tokens["access_token"]})
+    client.cookies.set("refresh_token", tokens["access_token"])
+    resp = client.post("/auth/refresh")
     assert resp.status_code == 401
 
 
-def test_logout_revokes_refresh_token(client, register):
-    tokens = register()
+def test_logout_clears_cookie_and_revokes_it(client, register):
+    register()
 
-    resp = client.post("/auth/logout", json={"refresh_token": tokens["refresh_token"]})
+    resp = client.post("/auth/logout")
     assert resp.status_code == 204
+    assert client.cookies.get("refresh_token") is None
 
-    resp = client.post("/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
+    resp = client.post("/auth/refresh")
     assert resp.status_code == 401

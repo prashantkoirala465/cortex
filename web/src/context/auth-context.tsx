@@ -17,6 +17,8 @@ type User = {
   created_at: string;
 };
 
+export type AuthFetch = (path: string, options?: RequestInit) => Promise<unknown>;
+
 type AuthContextValue = {
   user: User | null;
   isLoading: boolean;
@@ -25,7 +27,7 @@ type AuthContextValue = {
   logout: () => Promise<void>;
   /** fetch wrapper that attaches the current access token and
    * transparently retries once after a silent refresh on a 401 */
-  authFetch: (path: string, options?: RequestInit) => Promise<unknown>;
+  authFetch: AuthFetch;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -55,18 +57,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // refresh-token rotation is single-use, so if this effect ever runs
+    // twice concurrently (React StrictMode's dev double-invoke, or a fast
+    // remount), the losing call must not clobber state the winning call
+    // already set - hence the `active` guard below.
+    let active = true;
+
     (async () => {
       const token = await refresh();
+      if (!active) return;
+
       if (token) {
         try {
           await fetchMe(token);
         } catch {
+          if (!active) return;
           accessTokenRef.current = null;
           setUser(null);
         }
       }
-      setIsLoading(false);
+      if (active) setIsLoading(false);
     })();
+
+    return () => {
+      active = false;
+    };
   }, [refresh, fetchMe]);
 
   const login = useCallback(

@@ -4,9 +4,10 @@ import type { JSONContent } from "@tiptap/react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ErrorBanner, friendlyErrorMessage } from "@/components/error-banner";
 import { NavBar } from "@/components/nav-bar";
 import { NoteEditor } from "@/components/note-editor";
-import { useAuth } from "@/context/auth-context";
+import { type AuthFetch, useAuth } from "@/context/auth-context";
 import { useRequireAuth } from "@/hooks/use-require-auth";
 import { ApiError } from "@/lib/api";
 import { deleteNote, EMPTY_DOC, getNote, getRelatedNotes, updateNote, type Note } from "@/lib/notes";
@@ -16,6 +17,20 @@ type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 const AUTOSAVE_DELAY_MS = 800;
 
+/** No setState here on purpose - keeping this pure lets both the initial
+ * load effect and the manual retry button share it without either one
+ * tripping the "no setState in an effect body" lint rule. */
+async function fetchNoteData(authFetch: AuthFetch, id: string) {
+  const note = await getNote(authFetch, id);
+  let relatedNotes: SearchResult[] = [];
+  try {
+    relatedNotes = await getRelatedNotes(authFetch, id);
+  } catch {
+    relatedNotes = [];
+  }
+  return { note, relatedNotes };
+}
+
 export default function NotePage() {
   const { id } = useParams<{ id: string }>();
   const { user, isLoading } = useRequireAuth();
@@ -24,11 +39,14 @@ export default function NotePage() {
 
   const [note, setNote] = useState<Note | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState<JSONContent>(EMPTY_DOC);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [relatedNotes, setRelatedNotes] = useState<SearchResult[] | null>(null);
   const [isRefreshingRelated, setIsRefreshingRelated] = useState(false);
+  const [relatedError, setRelatedError] = useState<string | null>(null);
 
   const hasLoadedRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -37,7 +55,7 @@ export default function NotePage() {
     if (!user) return;
     (async () => {
       try {
-        const loaded = await getNote(authFetch, id);
+        const { note: loaded, relatedNotes: related } = await fetchNoteData(authFetch, id);
         setNote(loaded);
         setTitle(loaded.title);
         setContent(loaded.content);
@@ -46,24 +64,36 @@ export default function NotePage() {
         setTimeout(() => {
           hasLoadedRef.current = true;
         }, 0);
+        setRelatedNotes(related);
+        setLoadError(null);
       } catch (err) {
         if (err instanceof ApiError && err.status === 404) setNotFound(true);
-        else throw err;
-        return;
-      }
-      // related notes are supplementary - don't let a hiccup here break the note view
-      try {
-        setRelatedNotes(await getRelatedNotes(authFetch, id));
-      } catch {
-        setRelatedNotes([]);
+        else setLoadError(friendlyErrorMessage(err));
       }
     })();
   }, [authFetch, id, user]);
+
+  const retryLoad = useCallback(async () => {
+    setLoadError(null);
+    try {
+      const { note: loaded, relatedNotes: related } = await fetchNoteData(authFetch, id);
+      setNote(loaded);
+      setTitle(loaded.title);
+      setContent(loaded.content);
+      hasLoadedRef.current = true;
+      setRelatedNotes(related);
+    } catch (err) {
+      setLoadError(friendlyErrorMessage(err));
+    }
+  }, [authFetch, id]);
 
   async function refreshRelatedNotes() {
     setIsRefreshingRelated(true);
     try {
       setRelatedNotes(await getRelatedNotes(authFetch, id));
+      setRelatedError(null);
+    } catch (err) {
+      setRelatedError(friendlyErrorMessage(err));
     } finally {
       setIsRefreshingRelated(false);
     }
@@ -98,8 +128,13 @@ export default function NotePage() {
 
   async function handleDelete() {
     if (!confirm("Delete this note? This can't be undone.")) return;
-    await deleteNote(authFetch, id);
-    router.push("/");
+    setDeleteError(null);
+    try {
+      await deleteNote(authFetch, id);
+      router.push("/");
+    } catch (err) {
+      setDeleteError(friendlyErrorMessage(err));
+    }
   }
 
   if (isLoading || !user) return null;
@@ -113,6 +148,17 @@ export default function NotePage() {
           <Link href="/" className="text-sm underline">
             Back to your notes
           </Link>
+        </main>
+      </div>
+    );
+  }
+
+  if (loadError && !note) {
+    return (
+      <div className="flex flex-1 flex-col">
+        <NavBar />
+        <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-3 px-4">
+          <ErrorBanner message={loadError} onRetry={retryLoad} />
         </main>
       </div>
     );
@@ -141,6 +187,8 @@ export default function NotePage() {
             </div>
           </div>
 
+          {deleteError && <ErrorBanner message={deleteError} />}
+
           <input
             value={title}
             onChange={(e) => handleTitleChange(e.target.value)}
@@ -163,7 +211,9 @@ export default function NotePage() {
             </button>
           </div>
 
-          {relatedNotes === null && (
+          {relatedError && <p className="text-xs text-red-600 dark:text-red-400">{relatedError}</p>}
+
+          {relatedNotes === null && !relatedError && (
             <p className="text-xs text-black/40 dark:text-white/40">Loading...</p>
           )}
           {relatedNotes?.length === 0 && (

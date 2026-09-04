@@ -22,6 +22,9 @@ export function NavBar() {
             <Link href="/graph" className="text-sm text-black/60 hover:opacity-70 dark:text-white/60">
               Graph
             </Link>
+            <Link href="/search" className="text-sm text-black/60 hover:opacity-70 dark:text-white/60">
+              Search
+            </Link>
           </>
         )}
       </div>

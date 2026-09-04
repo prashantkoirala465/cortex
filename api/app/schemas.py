@@ -81,3 +81,10 @@ class GraphEdge(BaseModel):
 class GraphResponse(BaseModel):
     nodes: list[GraphNode]
     edges: list[GraphEdge]
+
+
+class SearchResult(BaseModel):
+    note_id: uuid.UUID
+    title: str
+    snippet: str
+    score: float
